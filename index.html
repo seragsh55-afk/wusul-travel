@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>وصول للسفريات</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>*{box-sizing:border-box}body{font-family:system-ui;background:#f1f5f9;margin:0;padding:12px}.card{background:#fff;padding:16px;border-radius:14px;margin-bottom:12px}input,select,button{padding:10px;border-radius:8px;border:1px solid #ddd;width:100%;margin:4px 0}button{background:#0f172a;color:#fff;font-weight:bold;cursor:pointer}.green{background:#16a34a}.blue{background:#2563eb}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:700px){.grid{grid-template-columns:1fr}}table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #eee;font-size:13px;text-align:right}.ticket{border:2px dashed #000;padding:16px;background:#fff;margin-top:10px}</style>
+</head>
+<body>
+<div class="card"><h2>🚌 وصول للسفريات - Wusul Travel</h2><small id="status">متصل بـ Supabase ✅ gdnrwwkihllnkvmnhpyb</small></div>
+
+<div class="grid">
+<div class="card"><h3>إضافة باص</h3><input id="comp" placeholder="اسم الشركة"><input id="btype" placeholder="VIP / ممتاز"><input id="plate" placeholder="لوحة"><input id="seats" type="number" placeholder="45"><button onclick="addBus()">حفظ الباص</button></div>
+<div class="card"><h3>إضافة رحلة</h3><input id="from" placeholder="من"><input id="to" placeholder="إلى"><label>انطلاق</label><input id="dep" type="datetime-local"><label>وصول</label><input id="arr" type="datetime-local"><input id="price" type="number" placeholder="سعر"><select id="busSel"></select><button class="blue" onclick="addTrip()">حفظ الرحلة</button></div>
+</div>
+
+<div class="card"><h3>حجز تذكرة</h3>
+<div class="grid"><div><input id="pname" placeholder="اسم المسافر"><input id="phone" placeholder="تلفون"><input id="nid" placeholder="رقم وطني"><input id="seat" type="number" placeholder="رقم المقعد"></div><div><select id="tripSel"></select><input id="lugDesc" placeholder="بيانات العفش"><input id="lugWeight" type="number" placeholder="وزن العفش كجم"><input id="amount" type="number" placeholder="المبلغ"><input id="agency" value="وكالة وصول للسفريات"><input id="agencyPhone" value="0911234567"></div></div>
+<button class="green" onclick="addTicket()">حجز وطباعة 🎫</button>
+</div>
+
+<div class="card"><h3>التذاكر</h3><table><thead><tr><th>المسافر</th><th>الرحلة</th><th>مقعد</th><th>المبلغ</th><th>طباعة</th></tr></thead><tbody id="tb"></tbody></table></div>
+<div id="printArea"></div>
+
+<script>
+const SUPA_URL='https://gdnrwwkihllnkvmnhpyb.supabase.co';
+const SUPA_KEY='sb_publishable_X_jH5mVcNZinc2yRYqkwiQ_RYlIvZmw';
+const supabaseClient = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+async function loadBuses(){
+ let {data}=await supabaseClient.from('buses').select('*');
+ let s=document.getElementById('busSel'); s.innerHTML='';
+ data.forEach(b=>s.innerHTML+=`<option value="${b.id}">${b.company_name} - ${b.bus_type}</option>`);
+}
+async function loadTrips(){
+ let {data}=await supabaseClient.from('trips').select('*, buses(company_name,bus_type)');
+ let s=document.getElementById('tripSel'); s.innerHTML='';
+ data.forEach(t=>s.innerHTML+=`<option value="${t.id}">${t.from_city} → ${t.to_city} | ${new Date(t.departure_time).toLocaleString()} | ${t.price} SDG</option>`);
+ return data;
+}
+async function loadTickets(){
+ let {data}=await supabaseClient.from('tickets').select('*, trips(*)').order('created_at',{ascending:false});
+ let trips=await loadTrips(); let tb=document.getElementById('tb'); tb.innerHTML='';
+ data.forEach(t=>{
+  let trip=t.trips; let route=trip?`${trip.from_city}→${trip.to_city}`:'';
+  tb.innerHTML+=`<tr><td>${t.passenger_name}<br><small>${t.phone}</small></td><td>${route}<br>${trip?new Date(trip.departure_time).toLocaleString():''}</td><td>${t.seat_number}</td><td>${t.total_amount}</td><td><button class="blue" onclick='printTicket(${JSON.stringify(t).replace(/'/g,"&#39;")})'>🖨️</button></td></tr>`;
+ });
+}
+async function addBus(){
+ await supabaseClient.from('buses').insert({company_name:comp.value,bus_type:btype.value,plate_number:plate.value,seats_count:parseInt(seats.value)||45});
+ alert('تم حفظ الباص'); loadBuses();
+}
+async function addTrip(){
+ await supabaseClient.from('trips').insert({from_city:from.value,to_city:to.value,departure_time:dep.value,arrival_time:arr.value,price:parseFloat(price.value),bus_id:busSel.value});
+ alert('تم حفظ الرحلة'); loadTrips();
+}
+async function addTicket(){
+ let {data}=await supabaseClient.from('tickets').insert({passenger_name:pname.value,phone:phone.value,national_id:nid.value,seat_number:parseInt(seat.value),trip_id:tripSel.value,luggage_desc:lugDesc.value,luggage_weight:parseFloat(lugWeight.value)||0,total_amount:parseFloat(amount.value),agency_name:agency.value,agency_phone:agencyPhone.value}).select().single();
+ alert('تم الحجز'); loadTickets(); printTicket(data);
+}
+function printTicket(t){
+ let trip=t.trips||{};
+ let html=`<div class="ticket"><h2 style="text-align:center">🎫 تذكرة سفر - ${t.agency_name}</h2><p>وكالة: ${t.agency_name} - ${t.agency_phone}</p><hr><p><b>المسافر:</b> ${t.passenger_name} | <b>تلفون:</b> ${t.phone}</p><p><b>رقم وطني:</b> ${t.national_id||'-'} | <b>مقعد:</b> ${t.seat_number}</p><hr><p><b>من:</b> ${trip.from_city||''} <b>إلى:</b> ${trip.to_city||''}</p><p><b>انطلاق:</b> ${trip.departure_time?new Date(trip.departure_time).toLocaleString():''}</p><p><b>وصول:</b> ${trip.arrival_time?new Date(trip.arrival_time).toLocaleString():''}</p><hr><p><b>العفش:</b> ${t.luggage_desc} | الوزن: ${t.luggage_weight} كجم</p><p><b>المبلغ:</b> ${t.total_amount} SDG</p><p style="text-align:center">رحلة سعيدة - Wusul Travel</p></div>`;
+ document.getElementById('printArea').innerHTML=html; let w=window.open('','','width=400,height=700'); w.document.write(`<html><body>${html}<script>window.print()<\/script></body></html>`); w.document.close();
+}
+loadBuses(); loadTickets();
+</script>
+</body>
+  </html>
