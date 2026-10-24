@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>وصول للسفريات - نظام حجز</title>
+<style>
+*{box-sizing:border-box}body{font-family:system-ui;background:#f1f5f9;margin:0;padding:12px}
+.card{background:#fff;padding:16px;border-radius:14px;box-shadow:0 1px 4px #0001;margin-bottom:12px}
+input,select,button{padding:10px;border-radius:8px;border:1px solid #ddd;width:100%;margin:4px 0}
+button{background:#0f172a;color:#fff;font-weight:bold;cursor:pointer}
+button.green{background:#16a34a}button.blue{background:#2563eb}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #eee;font-size:13px;text-align:right}
+.ticket{border:2px dashed #000;padding:16px;background:#fff}
+@media print{.no-print{display:none} .ticket{border:2px solid #000}}
+</style></head>
+<body>
+
+<div class="no-print">
+<div class="card"><h2 style="margin:0">🚌 نظام سفريات وصول - Wusul Travel</h2><small>Supabase + ASP.NET</small></div>
+
+<div class="grid">
+<div class="card"><h3>1- إضافة باص / شركة</h3>
+<input id="comp" placeholder="اسم الشركة"><input id="btype" placeholder="نوع الباص VIP/ممتاز"><input id="plate" placeholder="رقم اللوحة"><input id="seats" type="number" placeholder="عدد المقاعد 45">
+<button onclick="addBus()">حفظ الباص</button></div>
+
+<div class="card"><h3>2- إضافة رحلة</h3>
+<input id="from" placeholder="من - مثلا الخرطوم"><input id="to" placeholder="إلى - مثلا بورتسودان">
+<label>زمن الانطلاق</label><input id="dep" type="datetime-local"><label>زمن الوصول</label><input id="arr" type="datetime-local">
+<input id="price" type="number" placeholder="سعر التذكرة"><select id="busSel"></select>
+<button class="blue" onclick="addTrip()">حفظ الرحلة</button></div>
+</div>
+
+<div class="card"><h3>3- حجز تذكرة مسافر</h3>
+<div class="grid">
+<div>
+<input id="pname" placeholder="اسم المسافر"><input id="phone" placeholder="تلفون"><input id="nid" placeholder="رقم وطني / جواز"><input id="seat" type="number" placeholder="رقم المقعد">
+</div>
+<div>
+<select id="tripSel"></select>
+<input id="lugDesc" placeholder="بيانات العفش - مثلا شنطة كبيرة + شنطة يد">
+<input id="lugWeight" type="number" placeholder="وزن العفش كجم">
+<input id="amount" type="number" placeholder="المبلغ المدفوع">
+<input id="agency" value="وكالة وصول للسفريات"><input id="agencyPhone" value="0911234567">
+</div>
+</div>
+<button class="green" onclick="addTicket()">حجز وطباعة التذكرة 🎫</button>
+</div>
+
+<div class="card"><h3>التذاكر المحجوزة</h3>
+<table><thead><tr><th>المسافر</th><th>الرحلة</th><th>مقعد</th><th>المبلغ</th><th>طباعة</th><th>حذف</th></tr></thead><tbody id="tb"></tbody></table>
+</div>
+</div>
+
+<div id="printArea"></div>
+
+<script>
+const API_BUS="/api/buses",API_TRIP="/api/trips",API_TICK="/api/tickets";
+async function loadBuses(){let r=await fetch(API_BUS);let d=await r.json();let s=document.getElementById('busSel');s.innerHTML="";d.forEach(b=>s.innerHTML+=`<option value="${b.id}">${b.companyName} - ${b.busType} (${b.plateNumber})</option>`);}
+async function loadTrips(){let r=await fetch(API_TRIP);let d=await r.json();let s=document.getElementById('tripSel');s.innerHTML="";d.forEach(t=>s.innerHTML+=`<option value="${t.id}">${t.fromCity} → ${t.toCity} | ${new Date(t.departureTime).toLocaleString()} - ${t.price} SDG</option>`);return d;}
+async function loadTickets(){let r=await fetch(API_TICK);let d=await r.json();let tb=document.getElementById('tb');tb.innerHTML="";let trips=await loadTrips();d.forEach(t=>{
+ let trip=trips.find(x=>x.id===t.tripId);let route=trip?`${trip.fromCity}→${trip.toCity}`:"";
+ tb.innerHTML+=`<tr><td>${t.passengerName}<br><small>${t.phone}</small></td><td>${route}<br>مقعد ${t.seatNumber}</td><td>${t.seatNumber}</td><td>${t.totalAmount}</td><td><button class="blue" onclick='printTicket(${JSON.stringify(t).replace(/'/g,"&#39;")})'>🖨️</button></td><td><button style="background:#dc2626" onclick="delTicket('${t.id}')">X</button></td></tr>`
+});}
+async function addBus(){let b={companyName:comp.value,busType:btype.value,plateNumber:plate.value,seatsCount:parseInt(seats.value)||45};await fetch(API_BUS,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});alert('تم');loadBuses();}
+async function addTrip(){let t={fromCity:from.value,toCity:to.value,departureTime:dep.value,arrivalTime:arr.value,price:parseFloat(price.value),busId:busSel.value};await fetch(API_TRIP,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(t)});alert('تم');loadTrips();}
+async function addTicket(){let tk={passengerName:pname.value,phone:phone.value,nationalId:nid.value,seatNumber:parseInt(seat.value),tripId:tripSel.value,luggageDesc:lugDesc.value,luggageWeight:parseFloat(lugWeight.value)||0,totalAmount:parseFloat(amount.value),agencyName:agency.value,agencyPhone:agencyPhone.value};let res=await fetch(API_TICK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(tk)});let data=await res.json();alert('تم الحجز');loadTickets();printTicket(data);}
+function printTicket(t){
+ let html=`<div class="ticket"><h2 style="text-align:center">🎫 تذكرة سفر - ${t.agencyName}</h2><p>تلفون الوكالة: ${t.agencyPhone}</p><hr><p><b>اسم المسافر:</b> ${t.passengerName}</p><p><b>تلفون:</b> ${t.phone} | <b>هوية:</b> ${t.nationalId||'-'}</p><p><b>رقم المقعد:</b> ${t.seatNumber}</p><hr><p><b>العفش:</b> ${t.luggageDesc||'لا يوجد'} - الوزن: ${t.luggageWeight} كجم</p><p><b>المبلغ:</b> ${t.totalAmount} SDG</p><p><b>تاريخ الحجز:</b> ${new Date(t.createdAt).toLocaleString('ar-SD')}</p><hr><p style="text-align:center">رحلة سعيدة - Wusul Travel</p></div>`;
+ document.getElementById('printArea').innerHTML=html;let w=window.open('','','width=400,height=600');w.document.write(`<html><head><style>body{font-family:system-ui;padding:10px}.ticket{border:2px dashed #000;padding:16px}</style></head><body>${html}</body></html>`);w.document.close();w.print();
+}
+async function delTicket(id){if(confirm('حذف التذكرة؟')){await fetch(API_TICK+'/'+id,{method:'DELETE'});loadTickets();}}
+loadBuses();loadTrips();loadTickets();
+</script>
+</body>
+</html>
