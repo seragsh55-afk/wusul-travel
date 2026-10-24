@@ -2,105 +2,102 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>وصول للسفريات - Wusul Travel</title>
+<title>وصول للسفريات - Wusul PRO</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*{box-sizing:border-box}body{font-family:system-ui;background:#eef2f7;margin:0;padding:10px}
-.header{background:#0f172a;color:#fff;padding:16px;border-radius:16px;text-align:center}
-.card{background:#fff;padding:14px;border-radius:14px;margin:10px 0;box-shadow:0 2px 8px #0001}
-input,select,button{padding:11px;border-radius:10px;border:1px solid #ddd;width:100%;margin:5px 0;font-size:15px}
+*{box-sizing:border-box}body{font-family:system-ui;background:#eef2f7;margin:0;padding:8px}
+.header{background:#0f172a;color:#fff;padding:14px;border-radius:14px;text-align:center}
+.card{background:#fff;padding:12px;border-radius:14px;margin:8px 0;box-shadow:0 2px 8px #0001}
+input,select,button{padding:10px;border-radius:10px;border:1px solid #ddd;width:100%;margin:4px 0}
 button{background:#0f172a;color:#fff;font-weight:700;cursor:pointer}
-button.green{background:#16a34a}button.blue{background:#2563eb}button.orange{background:#ea580c}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.b{background:#2563eb}.g{background:#16a34a}.o{background:#ea580c}.r{background:#dc2626}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 @media(max-width:700px){.grid{grid-template-columns:1fr}}
-table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #eee;font-size:12px;text-align:right}
-.ticket{border:2px dashed #111;padding:16px;background:#fff;line-height:1.7}
-.badge{background:#dcfce7;color:#166534;padding:3px 8px;border-radius:20px;font-size:11px}
+table{width:100%;border-collapse:collapse}th,td{padding:7px;border-bottom:1px solid #eee;font-size:11px}
+.actions{display:flex;gap:4px}.actions button{padding:6px;font-size:11px;width:auto}
+.ticket{border:3px solid #0f172a;padding:14px;background:#fff;border-radius:12px}
+.ticket .top{display:flex;justify-content:space-between;align-items:center;border-bottom:2px dashed #000;padding-bottom:8px;margin-bottom:8px}
+.qr{width:90px;height:90px;border:1px solid #ddd}
+.editing{outline:2px solid #f59e0b;background:#fffbeb}
 </style>
 </head>
 <body>
+<div class="header"><h3 style="margin:0">🚌 وصول للسفريات PRO - حذف وتعديل + تذكرة منسقة</h3><small id="status">جاري الاتصال...</small></div>
 
-<div class="header"><h2 style="margin:0">🚌 وصول للسفريات | Wusul Travel</h2><small>متصل بـ Supabase ✅ gdnrwwkihllnkvmnhpyb | wwwroot/index.html + ASP.NET جاهز</small></div>
-
-<div class="card" style="background:#fffbeb;border:1px solid #fcd34d">
-<h3>🔍 البحث عن تذكرة برقم التلفون</h3>
-<div style="display:flex;gap:6px"><input id="searchPhone" placeholder="ادخل رقم التلفون 091..."><button class="orange" onclick="searchTicket()" style="width:120px">بحث</button></div>
-<div id="searchResult"></div>
-</div>
+<div class="card" style="background:#fffbeb"><h3>🔍 بحث بالتذكرة برقم التلفون</h3><div style="display:flex;gap:6px"><input id="searchPhone" placeholder="091..."><button class="o" style="width:90px" onclick="searchTicket()">بحث</button></div><div id="searchResult"></div></div>
 
 <div class="grid">
-<div class="card"><h3>إضافة باص</h3><input id="comp" placeholder="اسم الشركة - وصول"><input id="btype" placeholder="VIP / ممتاز"><input id="plate" placeholder="رقم اللوحة"><input id="seats" type="number" value="45"><button onclick="addBus()">حفظ الباص</button></div>
-<div class="card"><h3>إضافة رحلة</h3><input id="from" placeholder="من - الخرطوم"><input id="to" placeholder="إلى - عطبرة"><label>انطلاق</label><input id="dep" type="datetime-local"><label>وصول</label><input id="arr" type="datetime-local"><input id="price" type="number" placeholder="السعر SDG"><select id="busSel"></select><button class="blue" onclick="addTrip()">حفظ الرحلة</button></div>
+<div class="card" id="busCard"><h3>إضافة / تعديل باص <span id="busEditId"></span></h3>
+<input id="comp" placeholder="الشركة"><input id="btype" placeholder="VIP"><input id="plate" placeholder="لوحة"><input id="seats" type="number" placeholder="مقاعد"><button class="b" onclick="saveBus()">💾 حفظ الباص</button><button onclick="cancelEdit('bus')" style="background:#eee;color:#000">إلغاء</button>
+<table><tbody id="busList"></tbody></table></div>
+
+<div class="card" id="tripCard"><h3>إضافة / تعديل رحلة <span id="tripEditId"></span></h3>
+<input id="from" placeholder="من"><input id="to" placeholder="إلى"><input id="dep" type="datetime-local"><input id="arr" type="datetime-local"><input id="price" type="number" placeholder="السعر"><select id="busSel"></select>
+<button class="b" onclick="saveTrip()">💾 حفظ الرحلة</button><button onclick="cancelEdit('trip')" style="background:#eee;color:#000">إلغاء</button>
+<table><tbody id="tripList"></tbody></table></div>
 </div>
 
-<div class="card"><h3>حجز تذكرة + بيانات العفش</h3>
-<div class="grid"><div><input id="pname" placeholder="اسم المسافر"><input id="phone" placeholder="تلفون"><input id="nid" placeholder="رقم وطني / جواز"><input id="seat" type="number" placeholder="رقم المقعد"></div><div><select id="tripSel"></select><input id="lugDesc" placeholder="بيانات العفش - شنطة كبيرة + يد"><input id="lugWeight" type="number" placeholder="وزن كجم"><input id="amount" type="number" placeholder="المبلغ"><input id="agency" value="وكالة وصول للسفريات"><input id="agencyPhone" value="0911234567"></div></div>
-<button class="green" onclick="addTicket()">🎫 حجز وطباعة التذكرة</button>
-</div>
+<div class="card" id="ticketCard"><h3>حجز / تعديل تذكرة <span id="ticketEditId"></span></h3>
+<div class="grid"><div><input id="pname" placeholder="اسم المسافر"><input id="phone" placeholder="تلفون"><input id="nid" placeholder="رقم وطني"><input id="seat" type="number" placeholder="مقعد"></div><div><select id="tripSel"></select><input id="lugDesc" placeholder="بيانات العفش"><input id="lugWeight" type="number" placeholder="وزن"><input id="amount" type="number" placeholder="المبلغ"><input id="agency" value="وكالة وصول للسفريات"></div></div>
+<button class="g" onclick="saveTicket()">💾 حجز وطباعة</button><button onclick="cancelEdit('ticket')" style="background:#eee;color:#000">إلغاء تعديل</button></div>
 
-<div class="card"><h3>كل التذاكر <span class="badge" id="count">0</span></h3><table><thead><tr><th>المسافر</th><th>الرحلة</th><th>مقعد</th><th>المبلغ</th><th>طباعة</th></tr></thead><tbody id="tb"></tbody></table></div>
-<div id="printArea"></div>
+<div class="card"><h3>كل التذاكر <span id="count">0</span></h3><table><thead><tr><th>مسافر</th><th>رحلة</th><th>مقعد/مبلغ</th><th>عمليات</th></tr></thead><tbody id="tb"></tbody></table></div>
+<div id="printArea" style="display:none"></div>
 
 <script>
 const SUPA_URL='https://gdnrwwkihllnkvmnhpyb.supabase.co';
 const SUPA_KEY='sb_publishable_X_jH5mVcNZinc2yRYqkwiQ_RYlIvZmw';
 const supabaseClient = supabase.createClient(SUPA_URL, SUPA_KEY);
+let editBus=null, editTrip=null, editTicket=null;
+
+async function init(){document.getElementById('status').innerText='متصل ✅ - الحذف والتعديل مفعل'; loadAll();}
+async function loadAll(){await loadBuses(); await loadTrips(); await loadTickets();}
 
 async function loadBuses(){
- let {data}=await supabaseClient.from('buses').select('*');
- let s=document.getElementById('busSel'); s.innerHTML='';
- (data||[]).forEach(b=>s.innerHTML+=`<option value="${b.id}">${b.company_name} - ${b.bus_type} - ${b.plate_number}</option>`);
+ let {data}=await supabaseClient.from('buses').select('*').order('id',{ascending:false});
+ let sel=document.getElementById('busSel'); sel.innerHTML=''; (data||[]).forEach(b=>sel.innerHTML+=`<option value="${b.id}">${b.company_name} - ${b.plate_number}</option>`);
+ let list=document.getElementById('busList'); list.innerHTML=''; (data||[]).forEach(b=>{list.innerHTML+=`<tr><td>${b.company_name} ${b.plate_number}</td><td class="actions"><button class="b" onclick="editB('${b.id}','${b.company_name}','${b.bus_type}','${b.plate_number}',${b.seats_count})">تعديل</button><button class="r" onclick="delBus('${b.id}')">حذف</button></td></tr>`});
 }
 async function loadTrips(){
- let {data}=await supabaseClient.from('trips').select('*');
- let s=document.getElementById('tripSel'); s.innerHTML='';
- (data||[]).forEach(t=>s.innerHTML+=`<option value="${t.id}">${t.from_city} → ${t.to_city} | ${new Date(t.departure_time).toLocaleString()} | ${t.price} SDG</option>`);
- return data||[];
+ let {data}=await supabaseClient.from('trips').select('*, buses(*)').order('id',{ascending:false});
+ let sel=document.getElementById('tripSel'); sel.innerHTML=''; (data||[]).forEach(t=>sel.innerHTML+=`<option value="${t.id}">${t.from_city}→${t.to_city} ${new Date(t.departure_time).toLocaleDateString()}</option>`);
+ let list=document.getElementById('tripList'); list.innerHTML=''; (data||[]).forEach(t=>{list.innerHTML+=`<tr><td>${t.from_city}→${t.to_city} ${t.price}ج</td><td class="actions"><button class="b" onclick="editT('${t.id}','${t.from_city}','${t.to_city}','${t.departure_time}','${t.arrival_time}',${t.price},'${t.bus_id}')">تعديل</button><button class="r" onclick="delTrip('${t.id}')">حذف</button></td></tr>`});
 }
 async function loadTickets(){
- let {data}=await supabaseClient.from('tickets').select('*, trips(*)').order('created_at',{ascending:false});
+ let {data}=await supabaseClient.from('tickets').select('*, trips(*, buses(*))').order('id',{ascending:false});
  document.getElementById('count').innerText=(data||[]).length;
  let tb=document.getElementById('tb'); tb.innerHTML='';
  (data||[]).forEach(t=>{
-  let trip=t.trips; let route=trip?`${trip.from_city}→${trip.to_city}`:'';
-  tb.innerHTML+=`<tr><td>${t.passenger_name}<br><small>${t.phone}</small></td><td>${route}<br><small>${trip?new Date(trip.departure_time).toLocaleDateString():''}</small></td><td>${t.seat_number}</td><td>${t.total_amount}</td><td><button class="blue" onclick='printTicket(${JSON.stringify(t).replace(/'/g,"&#39;")})'>🖨️</button></td></tr>`;
+  let tr=t.trips; tb.innerHTML+=`<tr><td>${t.passenger_name}<br><small>${t.phone}</small></td><td>${tr?tr.from_city+'→'+tr.to_city:''}</td><td>م${t.seat_number} - ${t.total_amount}ج</td><td class="actions"><button class="b" onclick="editTk('${t.id}')">تعديل</button><button class="g" onclick="printById('${t.id}')">طباعة</button><button class="r" onclick="delTicket('${t.id}')">حذف</button></td></tr>`;
  });
 }
 
-async function searchTicket(){
- let ph=searchPhone.value.trim();
- if(!ph){alert('ادخل رقم التلفون');return;}
- let {data}=await supabaseClient.from('tickets').select('*, trips(*), trips!inner(buses(*))').eq('phone',ph);
- let div=document.getElementById('searchResult');
- if(!data||data.length==0){div.innerHTML='<p style="color:red">لا توجد تذاكر بهذا الرقم</p>';return;}
- div.innerHTML='';
- data.forEach(t=>{
-  let trip=t.trips;
-  div.innerHTML+=`<div class="ticket"><b>المسافر:</b> ${t.passenger_name} | <b>تلفون:</b> ${t.phone}<br><b>الرحلة:</b> ${trip?.from_city} → ${trip?.to_city} | <b>مقعد:</b> ${t.seat_number}<br><b>العفش:</b> ${t.luggage_desc} (${t.luggage_weight} كجم) | <b>المبلغ:</b> ${t.total_amount} SDG<br><button class="blue" onclick='printTicket(${JSON.stringify(t).replace(/'/g,"&#39;")})'>طباعة التذكرة</button></div>`;
- });
-}
+// BUS
+async function saveBus(){let payload={company_name:comp.value,bus_type:btype.value,plate_number:plate.value,seats_count:parseInt(seats.value)||45}; if(editBus){await supabaseClient.from('buses').update(payload).eq('id',editBus);} else {await supabaseClient.from('buses').insert(payload);} cancelEdit('bus'); loadBuses();}
+function editB(id,c,bt,p,s){editBus=id; comp.value=c; btype.value=bt; plate.value=p; seats.value=s; document.getElementById('busCard').classList.add('editing'); document.getElementById('busEditId').innerText='(تعديل #'+id.slice(0,4)+')';}
+async function delBus(id){if(!confirm('حذف الباص؟'))return; await supabaseClient.from('buses').delete().eq('id',id); loadBuses();}
 
-async function addBus(){
- let {error}=await supabaseClient.from('buses').insert({company_name:comp.value,bus_type:btype.value,plate_number:plate.value,seats_count:parseInt(seats.value)||45});
- if(error) alert(error.message); else {alert('تم حفظ الباص ✅'); loadBuses();}
-}
-async function addTrip(){
- let {error}=await supabaseClient.from('trips').insert({from_city:from.value,to_city:to.value,departure_time:dep.value,arrival_time:arr.value,price:parseFloat(price.value),bus_id:busSel.value});
- if(error) alert(error.message); else {alert('تم حفظ الرحلة ✅'); loadTrips();}
-}
-async function addTicket(){
- let {data,error}=await supabaseClient.from('tickets').insert({passenger_name:pname.value,phone:phone.value,national_id:nid.value,seat_number:parseInt(seat.value),trip_id:tripSel.value,luggage_desc:lugDesc.value,luggage_weight:parseFloat(lugWeight.value)||0,total_amount:parseFloat(amount.value),agency_name:agency.value,agency_phone:agencyPhone.value}).select('*, trips(*)').single();
- if(error){alert(error.message);return;}
- alert('تم الحجز ✅'); loadTickets(); printTicket(data);
-}
+// TRIP
+async function saveTrip(){let payload={from_city:from.value,to_city:to.value,departure_time:dep.value,arrival_time:arr.value,price:parseFloat(price.value),bus_id:busSel.value}; if(editTrip){await supabaseClient.from('trips').update(payload).eq('id',editTrip);} else {await supabaseClient.from('trips').insert(payload);} cancelEdit('trip'); loadTrips();}
+function editT(id,f,t,d,a,p,bid){editTrip=id; from.value=f; to.value=t; dep.value=d.slice(0,16); arr.value=a.slice(0,16); price.value=p; busSel.value=bid; document.getElementById('tripCard').classList.add('editing'); document.getElementById('tripEditId').innerText='(تعديل #'+id.slice(0,4)+')';}
+async function delTrip(id){if(!confirm('حذف الرحلة؟ سيحذف تذاكرها'))return; await supabaseClient.from('trips').delete().eq('id',id); loadTrips(); loadTickets();}
+
+// TICKET
+async function saveTicket(){let payload={passenger_name:pname.value,phone:phone.value,national_id:nid.value,seat_number:parseInt(seat.value),trip_id:tripSel.value,luggage_desc:lugDesc.value,luggage_weight:parseFloat(lugWeight.value)||0,total_amount:parseFloat(amount.value),agency_name:agency.value}; let res; if(editTicket){res=await supabaseClient.from('tickets').update(payload).eq('id',editTicket).select('*, trips(*, buses(*))').single();} else {res=await supabaseClient.from('tickets').insert(payload).select('*, trips(*, buses(*))').single();} if(res.error){alert(res.error.message);return;} cancelEdit('ticket'); loadTickets(); printTicket(res.data);}
+async function editTk(id){let {data}=await supabaseClient.from('tickets').select('*').eq('id',id).single(); if(!data)return; editTicket=id; pname.value=data.passenger_name; phone.value=data.phone; nid.value=data.national_id; seat.value=data.seat_number; tripSel.value=data.trip_id; lugDesc.value=data.luggage_desc; lugWeight.value=data.luggage_weight; amount.value=data.total_amount; agency.value=data.agency_name; document.getElementById('ticketCard').classList.add('editing'); document.getElementById('ticketEditId').innerText='(تعديل تذكرة #'+id.slice(0,4)+')'; window.scrollTo(0,document.getElementById('ticketCard').offsetTop);}
+async function delTicket(id){if(!confirm('حذف التذكرة نهائي؟'))return; await supabaseClient.from('tickets').delete().eq('id',id); loadTickets();}
+function cancelEdit(type){if(type=='bus'){editBus=null; comp.value='';btype.value='';plate.value='';seats.value='';document.getElementById('busCard').classList.remove('editing');document.getElementById('busEditId').innerText='';} if(type=='trip'){editTrip=null; from.value='';to.value='';dep.value='';arr.value='';price.value='';document.getElementById('tripCard').classList.remove('editing');document.getElementById('tripEditId').innerText='';} if(type=='ticket'){editTicket=null; pname.value='';phone.value='';nid.value='';seat.value='';lugDesc.value='';lugWeight.value='';amount.value='';document.getElementById('ticketCard').classList.remove('editing');document.getElementById('ticketEditId').innerText='';}}
+
+async function searchTicket(){let ph=searchPhone.value.trim(); if(!ph)return; let {data}=await supabaseClient.from('tickets').select('*, trips(*, buses(*))').eq('phone',ph); let div=document.getElementById('searchResult'); if(!data||data.length==0){div.innerHTML='<p style="color:red">لا توجد تذاكر</p>';return;} div.innerHTML=''; data.forEach(t=>div.innerHTML+=`<div style="margin:6px 0;padding:8px;border:1px dashed #000;border-radius:8px"><b>${t.passenger_name}</b> - مقعد ${t.seat_number} - ${t.total_amount}ج <button class="b" onclick="printById('${t.id}')">طباعة</button> <button class="r" onclick="delTicket('${t.id}')">حذف</button></div>`);}
+
+async function printById(id){let {data}=await supabaseClient.from('tickets').select('*, trips(*, buses(*))').eq('id',id).single(); if(data)printTicket(data);}
 function printTicket(t){
- let trip=t.trips||{};
- let html=`<div class="ticket" style="font-family:system-ui"><h2 style="text-align:center;margin:0">🎫 تذكرة سفر - ${t.agency_name}</h2><p style="text-align:center">${t.agency_name} | ${t.agency_phone}</p><hr><p><b>اسم المسافر:</b> ${t.passenger_name}</p><p><b>تلفون:</b> ${t.phone} | <b>هوية:</b> ${t.national_id||'-'}</p><p><b>رقم المقعد:</b> ${t.seat_number} | <b>المبلغ:</b> ${t.total_amount} SDG</p><hr><p><b>من:</b> ${trip.from_city||''} <b>إلى:</b> ${trip.to_city||''}</p><p><b>انطلاق:</b> ${trip.departure_time?new Date(trip.departure_time).toLocaleString('ar-SD'):''}</p><p><b>وصول:</b> ${trip.arrival_time?new Date(trip.arrival_time).toLocaleString('ar-SD'):''}</p><hr><p><b>بيانات العفش:</b> ${t.luggage_desc||'لا يوجد'}</p><p><b>وزن العفش:</b> ${t.luggage_weight} كجم</p><p><b>نوع الباص:</b> ${trip.buses?.bus_type||trip.bus_id||''}</p><hr><p style="text-align:center;font-size:12px">تاريخ الحجز: ${new Date(t.created_at).toLocaleString('ar-SD')} | رحلة سعيدة مع وصول للسفريات</p></div>`;
- document.getElementById('printArea').innerHTML=html;
- let w=window.open('','','width=420,height=750'); w.document.write(`<html><head><title>تذكرة</title><style>body{font-family:system-ui;padding:12px}.ticket{border:2px dashed #000;padding:16px}</style></head><body>${html}<script>setTimeout(()=>window.print(),300)<\/script></body></html>`); w.document.close();
+ let trip=t.trips||{}; let bus=trip.buses||{}; let qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(t.phone+' | '+t.passenger_name+' | مقعد '+t.seat_number)}`;
+ let html=`<div class="ticket"><div class="top"><div><h2 style="margin:0">🚌 وصول للسفريات</h2><small>${t.agency_name||'Wusul Travel'} | 091... | الخرطوم</small><br><b>تذكرة سفر رسمية</b></div><img class="qr" src="${qrUrl}"><div style="text-align:center"><div style="font-size:22px;font-weight:800">${t.seat_number}</div><small>مقعد</small></div></div>
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px"><div><b>المسافر:</b> ${t.passenger_name}<br><b>تلفون:</b> ${t.phone}<br><b>هوية:</b> ${t.national_id||'-'}<br><b>المبلغ:</b> ${t.total_amount} SDG</div><div><b>من:</b> ${trip.from_city} → <b>إلى:</b> ${trip.to_city}<br><b>انطلاق:</b> ${trip.departure_time?new Date(trip.departure_time).toLocaleString('ar-SD'):''}<br><b>وصول:</b> ${trip.arrival_time?new Date(trip.arrival_time).toLocaleString('ar-SD'):''}<br><b>الباص:</b> ${bus.company_name||''} ${bus.plate_number||''} ${bus.bus_type||''}</div></div><hr style="border:1px dashed #000"><div style="font-size:13px"><b>بيانات العفش:</b> ${t.luggage_desc||'بدون'} | <b>الوزن:</b> ${t.luggage_weight} كجم</div><div style="margin-top:8px;display:flex;justify-content:space-between;font-size:11px"><span>تاريخ الحجز: ${new Date(t.created_at).toLocaleString('ar-SD')}</span><span>رقم التذكرة: ${t.id.slice(0,8)}</span><span>✔️ وصول</span></div></div>`;
+ let w=window.open('','','width=420,height=700'); w.document.write(`<html><head><title>تذكرة ${t.passenger_name}</title><style>body{font-family:system-ui;padding:10px}.ticket{border:3px solid #000;padding:14px;border-radius:12px}.top{display:flex;justify-content:space-between}.qr{width:80px;height:80px}</style></head><body>${html}<script>setTimeout(()=>window.print(),400)<\/script></body></html>`); w.document.close();
 }
-
-loadBuses(); loadTrips(); loadTickets();
+init();
 </script>
 </body>
-                                                                                                                                                                                                                                                                                                       </html>
+</html>
